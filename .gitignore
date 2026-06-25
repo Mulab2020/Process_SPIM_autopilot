@@ -1,0 +1,15 @@
+# Large binary datasets
+sample_data/
+
+# Executables and DLLs (kept in bin\ subfolder)
+bin/
+*.exe
+*.dll
+*.pdb
+
+# h5 output
+*.h5
+
+# Temp files
+*.tmp
+%TEMP%/
