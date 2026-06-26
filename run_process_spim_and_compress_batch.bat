@@ -216,23 +216,26 @@ for /f "tokens=1-3 delims=_" %%a in ("!PV_SAMPLE!") do (
 set "PV_CAM=!PV_PART_B:~2,1!"
 call :parse_frame_part "!PV_PART_A!" PV_PREFIX PV_DIGITS
 
-REM Find min / max frame via string comparison (zero-padded = numeric)
-set "PV_MIN_STR="
-set "PV_MAX_STR="
-for %%f in ("!PV_SRC!\*_CM!PV_CAM!_CHN00.stack") do (
-    set "PV_FNAME=%%~nxf"
-    for /f "tokens=1 delims=_" %%a in ("!PV_FNAME!") do set "PV_FULL=%%a"
-    set "PV_FSTR=!PV_FULL:%PV_PREFIX%=!"
-    if "!PV_MIN_STR!"=="" (
-        set "PV_MIN_STR=!PV_FSTR!"
-        set "PV_MAX_STR=!PV_FSTR!"
-    ) else (
-        if "!PV_FSTR!" LSS "!PV_MIN_STR!" set "PV_MIN_STR=!PV_FSTR!"
-        if "!PV_FSTR!" GTR "!PV_MAX_STR!" set "PV_MAX_STR=!PV_FSTR!"
-    )
+REM Find min / max frame via dir sort (first item only, constant time)
+for /f "delims=" %%a in ('dir /b /on "!PV_SRC!\*_CM!PV_CAM!_CHN00.stack" 2^>nul') do (
+    set "PV_MIN_FILE=%%a"
+    goto :pv_got_min_file
 )
-call :str2num "!PV_MIN_STR!" PV_MIN
-call :str2num "!PV_MAX_STR!" PV_MAX
+:pv_got_min_file
+for /f "delims=" %%a in ('dir /b /o-n "!PV_SRC!\*_CM!PV_CAM!_CHN00.stack" 2^>nul') do (
+    set "PV_MAX_FILE=%%a"
+    goto :pv_got_max_file
+)
+:pv_got_max_file
+
+REM Parse frame strings from those two filenames
+for /f "tokens=1 delims=_" %%a in ("!PV_MIN_FILE!") do set "PV_FULL=%%a"
+set "PV_FSTR=!PV_FULL:%PV_PREFIX%=!"
+call :str2num "!PV_FSTR!" PV_MIN
+
+for /f "tokens=1 delims=_" %%a in ("!PV_MAX_FILE!") do set "PV_FULL=%%a"
+set "PV_FSTR=!PV_FULL:%PV_PREFIX%=!"
+call :str2num "!PV_FSTR!" PV_MAX
 
 REM Display detected config
 echo   Sample:      !PV_SAMPLE!
@@ -288,26 +291,26 @@ set "CAM_NUM=!PART_B:~2,1!"
 REM Extract prefix and digit count from e.g. "TM0000009"
 call :parse_frame_part "!PART_A!" PREFIX NAME_DIGIT
 
-REM ---- Find min / max frame number via string comparison ----
-set "MIN_FRAME_STR="
-set "MAX_FRAME_STR="
-
-for %%f in ("!SRC_DIR!\*_CM!CAM_NUM!_CHN00.stack") do (
-    set "FNAME=%%~nxf"
-    for /f "tokens=1 delims=_" %%a in ("!FNAME!") do (
-        set "FULL=%%a"
-    )
-    set "FRAME_STR=!FULL:%PREFIX%=!"
-    if "!MIN_FRAME_STR!"=="" (
-        set "MIN_FRAME_STR=!FRAME_STR!"
-        set "MAX_FRAME_STR=!FRAME_STR!"
-    ) else (
-        if "!FRAME_STR!" LSS "!MIN_FRAME_STR!" set "MIN_FRAME_STR=!FRAME_STR!"
-        if "!FRAME_STR!" GTR "!MAX_FRAME_STR!" set "MAX_FRAME_STR=!FRAME_STR!"
-    )
+REM ---- Find min / max frame via dir sort (first item only) ----
+for /f "delims=" %%a in ('dir /b /on "!SRC_DIR!\*_CM!CAM_NUM!_CHN00.stack" 2^>nul') do (
+    set "MIN_FILE=%%a"
+    goto :pd_got_min_file
 )
-call :str2num "!MIN_FRAME_STR!" MIN_FRAME
-call :str2num "!MAX_FRAME_STR!" MAX_FRAME
+:pd_got_min_file
+for /f "delims=" %%a in ('dir /b /o-n "!SRC_DIR!\*_CM!CAM_NUM!_CHN00.stack" 2^>nul') do (
+    set "MAX_FILE=%%a"
+    goto :pd_got_max_file
+)
+:pd_got_max_file
+
+REM Parse frame strings from those two filenames
+for /f "tokens=1 delims=_" %%a in ("!MIN_FILE!") do set "FULL=%%a"
+set "FRAME_STR=!FULL:%PREFIX%=!"
+call :str2num "!FRAME_STR!" MIN_FRAME
+
+for /f "tokens=1 delims=_" %%a in ("!MAX_FILE!") do set "FULL=%%a"
+set "FRAME_STR=!FULL:%PREFIX%=!"
+call :str2num "!FRAME_STR!" MAX_FRAME
 
 REM Derive reference frame (middle of range)
 set /a REF_FRAME=(!MIN_FRAME! + !MAX_FRAME!) / 2
