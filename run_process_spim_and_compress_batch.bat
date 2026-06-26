@@ -216,17 +216,23 @@ for /f "tokens=1-3 delims=_" %%a in ("!PV_SAMPLE!") do (
 set "PV_CAM=!PV_PART_B:~2,1!"
 call :parse_frame_part "!PV_PART_A!" PV_PREFIX PV_DIGITS
 
-REM Find min / max frame
-set "PV_MIN=2147483647"
-set "PV_MAX=0"
+REM Find min / max frame via string comparison (zero-padded = numeric)
+set "PV_MIN_STR="
+set "PV_MAX_STR="
 for %%f in ("!PV_SRC!\*_CM!PV_CAM!_CHN00.stack") do (
     set "PV_FNAME=%%~nxf"
     for /f "tokens=1 delims=_" %%a in ("!PV_FNAME!") do set "PV_FULL=%%a"
     set "PV_FSTR=!PV_FULL:%PV_PREFIX%=!"
-    call :str2num "!PV_FSTR!" PV_FNUM
-    if !PV_FNUM! LSS !PV_MIN! set "PV_MIN=!PV_FNUM!"
-    if !PV_FNUM! GTR !PV_MAX! set "PV_MAX=!PV_FNUM!"
+    if "!PV_MIN_STR!"=="" (
+        set "PV_MIN_STR=!PV_FSTR!"
+        set "PV_MAX_STR=!PV_FSTR!"
+    ) else (
+        if "!PV_FSTR!" LSS "!PV_MIN_STR!" set "PV_MIN_STR=!PV_FSTR!"
+        if "!PV_FSTR!" GTR "!PV_MAX_STR!" set "PV_MAX_STR=!PV_FSTR!"
+    )
 )
+call :str2num "!PV_MIN_STR!" PV_MIN
+call :str2num "!PV_MAX_STR!" PV_MAX
 
 REM Display detected config
 echo   Sample:      !PV_SAMPLE!
@@ -282,9 +288,9 @@ set "CAM_NUM=!PART_B:~2,1!"
 REM Extract prefix and digit count from e.g. "TM0000009"
 call :parse_frame_part "!PART_A!" PREFIX NAME_DIGIT
 
-REM ---- Find min / max frame number for this camera ----
-set "MIN_FRAME=2147483647"
-set "MAX_FRAME=0"
+REM ---- Find min / max frame number via string comparison ----
+set "MIN_FRAME_STR="
+set "MAX_FRAME_STR="
 
 for %%f in ("!SRC_DIR!\*_CM!CAM_NUM!_CHN00.stack") do (
     set "FNAME=%%~nxf"
@@ -292,10 +298,16 @@ for %%f in ("!SRC_DIR!\*_CM!CAM_NUM!_CHN00.stack") do (
         set "FULL=%%a"
     )
     set "FRAME_STR=!FULL:%PREFIX%=!"
-    call :str2num "!FRAME_STR!" FRAME_NUM
-    if !FRAME_NUM! LSS !MIN_FRAME! set "MIN_FRAME=!FRAME_NUM!"
-    if !FRAME_NUM! GTR !MAX_FRAME! set "MAX_FRAME=!FRAME_NUM!"
+    if "!MIN_FRAME_STR!"=="" (
+        set "MIN_FRAME_STR=!FRAME_STR!"
+        set "MAX_FRAME_STR=!FRAME_STR!"
+    ) else (
+        if "!FRAME_STR!" LSS "!MIN_FRAME_STR!" set "MIN_FRAME_STR=!FRAME_STR!"
+        if "!FRAME_STR!" GTR "!MAX_FRAME_STR!" set "MAX_FRAME_STR=!FRAME_STR!"
+    )
 )
+call :str2num "!MIN_FRAME_STR!" MIN_FRAME
+call :str2num "!MAX_FRAME_STR!" MAX_FRAME
 
 REM Derive reference frame (middle of range)
 set /a REF_FRAME=(!MIN_FRAME! + !MAX_FRAME!) / 2
