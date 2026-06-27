@@ -1,11 +1,6 @@
 # Large binary datasets
 sample_data/
-
-# Executables and DLLs (kept in bin\ subfolder)
-bin/
-*.exe
-*.dll
-*.pdb
+data/
 
 # h5 output
 *.h5
