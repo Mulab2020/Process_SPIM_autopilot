@@ -45,6 +45,38 @@ directory whose name ends with **`raw`** and that contains at least one
 `.stack` file.
 
 
+## Usage
+
+### Preparing your data
+
+1. Create a folder under `data\` with a name ending in **`_raw`**, e.g.
+   `data\tm_20250601_raw\`.
+2. Place your `.stack` files inside.  The naming convention is:
+
+   ```
+   <prefix><frame>_CM<camera>_CHN00.stack
+   ```
+
+   Examples: `TM0000001_CM0_CHN00.stack`, `TM0000001_CM1_CHN00.stack`
+
+3. If you plan to run the compression step, also place `stack_dimension.log`
+   in the same directory (required by `stack2h5`).
+
+4. Run the script — it will scan `data\*_raw`, detect your datasets, and
+   prompt you to confirm each one.
+
+### Deliverables
+
+| Step | Input | Output | Location |
+|---|---|---|---|
+| Registration | `data\*_raw\*.stack` | Registered TIFF stacks | `data\*_registered\` |
+| Compression | `data\*_raw\*.stack` + `stack_dimension.log` | h5 datasets | `data\*_h5\` |
+
+Both output directories are created automatically alongside the source
+directory (the script replaces `raw` with `registered` / `h5` in the
+path).
+
+
 ## Workflow
 
 ### 1. Select server *(first prompt)*
@@ -257,6 +289,35 @@ are cleaned up automatically.
 
 源数据必须位于 `data\` 文件夹下。脚本会扫描每个以 **`raw`** 结尾且
 包含至少一个 `.stack` 文件的目录。
+
+
+## 使用方法
+
+### 准备数据
+
+1. 在 `data\` 下创建以 **`_raw`** 结尾的文件夹，如 `data\tm_20250601_raw\`。
+2. 将 `.stack` 文件放入其中。命名规范为：
+
+   ```
+   <前缀><帧号>_CM<相机>_CHN00.stack
+   ```
+
+   示例：`TM0000001_CM0_CHN00.stack`、`TM0000001_CM1_CHN00.stack`
+
+3. 如需运行压缩步骤，请同时将 `stack_dimension.log` 放入同一目录
+   （`stack2h5` 依赖此文件）。
+
+4. 运行脚本 — 它会自动扫描 `data\*_raw`，检测到数据集后逐个提示确认。
+
+### 输出产物
+
+| 步骤 | 输入 | 输出 | 位置 |
+|---|---|---|---|
+| 配准 | `data\*_raw\*.stack` | 配准后的 TIFF 栈 | `data\*_registered\` |
+| 压缩 | `data\*_raw\*.stack` + `stack_dimension.log` | h5 数据集 | `data\*_h5\` |
+
+两个输出目录会自动在源目录旁创建（脚本将路径中的 `raw` 替换为
+`registered` / `h5`）。
 
 
 ## 工作流程

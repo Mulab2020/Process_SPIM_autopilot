@@ -1,6 +1,7 @@
-# Large binary datasets
+# Large binary datasets — exclude everything except the hint file
 sample_data/
-data/
+data/*
+!data/README.txt
 
 # h5 output
 *.h5
