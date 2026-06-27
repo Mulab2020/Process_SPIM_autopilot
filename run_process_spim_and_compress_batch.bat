@@ -99,6 +99,11 @@ for /l %%i in (1,1,!COUNT!) do (
     if "!INC_RESULT!"=="1" (
         set /a SELECTED+=1
         set "SEL_!SELECTED!=!RAW_%%i!"
+        set "SEL_PREFIX_!SELECTED!=!PV_PREFIX!"
+        set "SEL_DIGITS_!SELECTED!=!PV_DIGITS!"
+        set "SEL_CAM_!SELECTED!=!PV_CAM!"
+        set "SEL_MIN_!SELECTED!=!PV_MIN!"
+        set "SEL_MAX_!SELECTED!=!PV_MAX!"
         echo   [ADDED]
     ) else (
         echo   [SKIPPED]
@@ -270,47 +275,12 @@ echo   [%DS_IDX%/%DS_TOT%] Processing: !SRC_DIR!
 echo ##################################################
 echo.
 
-REM ---- Step 1: Analyze .stack file naming ----
-set "FIRST=1"
-for %%f in ("!SRC_DIR!\*.stack") do (
-    if !FIRST! EQU 1 (
-        set "SAMPLE=%%~nxf"
-        set "FIRST=0"
-    )
-)
-
-for /f "tokens=1-3 delims=_" %%a in ("!SAMPLE!") do (
-    set "PART_A=%%a"
-    set "PART_B=%%b"
-    set "PART_C=%%c"
-)
-
-REM Camera number from "CM{N}"
-set "CAM_NUM=!PART_B:~2,1!"
-
-REM Extract prefix and digit count from e.g. "TM0000009"
-call :parse_frame_part "!PART_A!" PREFIX NAME_DIGIT
-
-REM ---- Find min / max frame via dir sort (first item only) ----
-for /f "delims=" %%a in ('dir /b /on "!SRC_DIR!\*_CM!CAM_NUM!_CHN00.stack" 2^>nul') do (
-    set "MIN_FILE=%%a"
-    goto :pd_got_min_file
-)
-:pd_got_min_file
-for /f "delims=" %%a in ('dir /b /o-n "!SRC_DIR!\*_CM!CAM_NUM!_CHN00.stack" 2^>nul') do (
-    set "MAX_FILE=%%a"
-    goto :pd_got_max_file
-)
-:pd_got_max_file
-
-REM Parse frame strings from those two filenames
-for /f "tokens=1 delims=_" %%a in ("!MIN_FILE!") do set "FULL=%%a"
-set "FRAME_STR=!FULL:%PREFIX%=!"
-call :str2num "!FRAME_STR!" MIN_FRAME
-
-for /f "tokens=1 delims=_" %%a in ("!MAX_FILE!") do set "FULL=%%a"
-set "FRAME_STR=!FULL:%PREFIX%=!"
-call :str2num "!FRAME_STR!" MAX_FRAME
+REM ---- Restore values computed during preview (no re-analysis) ----
+call set "PREFIX=%%SEL_PREFIX_!DS_IDX!%%"
+call set "NAME_DIGIT=%%SEL_DIGITS_!DS_IDX!%%"
+call set "CAM_NUM=%%SEL_CAM_!DS_IDX!%%"
+call set "MIN_FRAME=%%SEL_MIN_!DS_IDX!%%"
+call set "MAX_FRAME=%%SEL_MAX_!DS_IDX!%%"
 
 REM Derive reference frame (middle of range)
 set /a REF_FRAME=(!MIN_FRAME! + !MAX_FRAME!) / 2
@@ -325,8 +295,7 @@ if "!DO_REG!"=="1" set /a STEPS+=1
 if "!DO_COMPRESS!"=="1" set /a STEPS+=1
 set "STEP_N=0"
 
-REM ---- Display detected configuration ----
-echo   Sample:      !SAMPLE!
+REM ---- Display (all values confirmed during preview) ----
 echo   Prefix:      !PREFIX!
 echo   Digits:      !NAME_DIGIT!
 echo   Camera:      !CAM_NUM!
