@@ -401,10 +401,12 @@ echo.
 REM ============================================================
 REM Pre-flight: count .stack files, warn if incomplete
 REM ============================================================
-for /f %%c in ('dir /b "!SRC_DIR!\*_CM!CAM_NUM!_CHN00.stack" 2^>nul ^| find /c /v ""') do set "STACK_COUNT=%%c"
+REM find /c output has leading spaces that vary by locale — normalize
+REM to plain integers via set /a before comparing.
+for /f %%c in ('dir /b "!SRC_DIR!\*_CM!CAM_NUM!_CHN00.stack" 2^>nul ^| find /c /v ""') do set /a STACK_COUNT=%%c 2>nul
 set /a EXPECTED_COUNT=!MAX_FRAME! - !MIN_FRAME! + 1
 
-if "!STACK_COUNT!" NEQ "!EXPECTED_COUNT!" (
+if !STACK_COUNT! NEQ !EXPECTED_COUNT! (
     echo  [WARNING] Stack count mismatch for camera !CAM_NUM!:
     echo    Expected: !EXPECTED_COUNT!  (frames !MIN_FRAME! - !MAX_FRAME!)
     echo    Found:    !STACK_COUNT!  ^(missing frames will cause tool errors^)
