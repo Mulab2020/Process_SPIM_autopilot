@@ -401,9 +401,9 @@ echo.
 REM ============================================================
 REM Pre-flight: count .stack files, warn if incomplete
 REM ============================================================
-REM find /c output has leading spaces that vary by locale — normalize
-REM to plain integers via set /a before comparing.
-for /f %%c in ('dir /b "!SRC_DIR!\*_CM!CAM_NUM!_CHN00.stack" 2^>nul ^| find /c /v ""') do set /a STACK_COUNT=%%c 2>nul
+REM Simple for-loop counter — locale-independent, fast enough in practice.
+set "STACK_COUNT=0"
+for %%f in ("!SRC_DIR!\*_CM!CAM_NUM!_CHN00.stack") do set /a STACK_COUNT+=1
 set /a EXPECTED_COUNT=!MAX_FRAME! - !MIN_FRAME! + 1
 
 if !STACK_COUNT! NEQ !EXPECTED_COUNT! (
@@ -486,12 +486,19 @@ REM ============================================================
 if "!DO_COMPRESS!"=="1" (
     set /a STEP_N+=1
 
-    REM stack2h5 requires stack_dimension.log in the source directory
-    if not exist "!SRC_DIR!\stack_dimension.log" (
-        echo  [WARNING] stack_dimension.log not found in !SRC_DIR!
+    REM stack2h5 requires the dimension log file (several naming
+    REM variants exist — check them all)
+    set "HAS_DIM_LOG=0"
+    if exist "!SRC_DIR!\Stack dimensions.log" set "HAS_DIM_LOG=1"
+    if exist "!SRC_DIR!\stack_dimension.log"  set "HAS_DIM_LOG=1"
+    if exist "!SRC_DIR!\stack_dimensions.log" set "HAS_DIM_LOG=1"
+    if exist "!SRC_DIR!\Stack dimension.log"  set "HAS_DIM_LOG=1"
+    if "!HAS_DIM_LOG!"=="0" (
+        echo  [WARNING] dimension log not found in !SRC_DIR!
+        echo    ^(checked: Stack dimensions.log, stack_dimension.log^)
         echo    stack2h5 requires this file -- compression may fail.
         echo.
-        >> "!SUMMARY_LOG!" echo   WARNING: stack_dimension.log missing from !SRC_DIR!
+        >> "!SUMMARY_LOG!" echo   WARNING: dimension log missing from !SRC_DIR!
         set /a WARN_COUNT+=1
     )
 
