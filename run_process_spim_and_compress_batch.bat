@@ -291,17 +291,20 @@ for /f "tokens=1-3 delims=_" %%a in ("!PV_SAMPLE!") do (
 set "PV_CAM=!PV_PART_B:~2,1!"
 call :parse_frame_part "!PV_PART_A!" PV_PREFIX PV_DIGITS
 
-REM Find min / max frame via dir sort (first item only, constant time)
-for /f "delims=" %%a in ('dir /b /on "!PV_SRC!\*_CM!PV_CAM!_CHN00.stack" 2^>nul') do (
+REM Clear frame numbers (defense against pollution from previous calls)
+set "PV_MIN="
+set "PV_MAX="
+
+REM Find min / max frame via dir sort (first item only, no goto — avoids
+REM call-stack corruption when :preview_and_ask is running inside call)
+set "PV_MIN_FILE="
+for /f "delims=" %%a in ('dir /b /on "!PV_SRC!\*_CM!PV_CAM!_CHN00.stack" 2^>nul') do if not defined PV_MIN_FILE (
     set "PV_MIN_FILE=%%a"
-    goto :pv_got_min_file
 )
-:pv_got_min_file
-for /f "delims=" %%a in ('dir /b /o-n "!PV_SRC!\*_CM!PV_CAM!_CHN00.stack" 2^>nul') do (
+set "PV_MAX_FILE="
+for /f "delims=" %%a in ('dir /b /o-n "!PV_SRC!\*_CM!PV_CAM!_CHN00.stack" 2^>nul') do if not defined PV_MAX_FILE (
     set "PV_MAX_FILE=%%a"
-    goto :pv_got_max_file
 )
-:pv_got_max_file
 
 REM Parse frame strings from those two filenames
 for /f "tokens=1 delims=_" %%a in ("!PV_MIN_FILE!") do set "PV_FULL=%%a"
