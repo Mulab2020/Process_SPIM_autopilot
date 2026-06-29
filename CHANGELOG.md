@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.6] — 2026-06-29
+
+### Added
+- **Per-dataset error tracking**: exit codes and status recorded in `ERR_n` /
+  `ERRCODE_n` arrays during processing. Failures are tracked independently for
+  registration (`REG_FAIL`) and compression (`H5_FAIL`).
+- **Results summary table**: after processing, a per-dataset table prints with
+  OK/FAILED status, exit codes, and aggregated success/failure counts.
+- **Failed-dataset banner**: when any dataset fails, `*** Some datasets FAILED
+  - review the errors above. ***` appears before the final pause so users
+  who glance at the bottom of the screen know something went wrong.
+
+### Changed
+- **Improved "no raw directory" error**: when `data\` exists but has no `*raw`
+  folders, the current contents are listed with a hint about expected naming.
+  When `data\` doesn't exist, the user is told to create it.
+
+---
+
 ## [0.1.5] — 2026-06-29
 
 ### Added

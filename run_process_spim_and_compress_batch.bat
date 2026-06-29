@@ -80,8 +80,14 @@ for /f "delims=" %%d in ('dir /s /b /ad "data\*raw" 2^>nul') do (
 )
 
 if !COUNT! EQU 0 (
-    echo [ERROR] No directory ending with "raw" found that contains .stack files.
-    echo Current: %cd%
+    echo [ERROR] No directory ending with "raw" found in data\.
+    if exist "data\" (
+        echo Current:
+        dir /b /ad "data\*"
+        echo   Make sure your datasets are in subfolders of data\ and that each dataset folder ends with "raw".
+    ) else (
+        echo   The data\ folder does not exist. Create it and place your datasets inside.
+    )
     pause
     exit /b 1
 )
@@ -175,6 +181,15 @@ if "!DO_COMPRESS!"=="1" (
 )
 
 REM ============================================================
+REM Initialize per-dataset error tracking
+REM ============================================================
+for /l %%i in (1,1,!SELECTED!) do (
+    set "ERR_%%i=OK"
+    set "ERRCODE_%%i="
+)
+set "FAIL_COUNT=0"
+
+REM ============================================================
 REM Process each selected dataset in serial
 REM ============================================================
 for /l %%s in (1,1,!SELECTED!) do (
@@ -183,10 +198,39 @@ for /l %%s in (1,1,!SELECTED!) do (
 
 echo.
 echo ================================================
-echo   ALL DONE - Processed !SELECTED! dataset(s).
+echo   RESULTS
 echo ================================================
+for /l %%i in (1,1,!SELECTED!) do (
+    call :print_result %%i
+)
+echo ================================================
+set /a OK_COUNT=!SELECTED! - !FAIL_COUNT!
+echo   !OK_COUNT! of !SELECTED! succeeded
+if !FAIL_COUNT! GTR 0 (
+    echo   !FAIL_COUNT! FAILED
+)
+echo ================================================
+echo.
+if !FAIL_COUNT! GTR 0 (
+    echo *** Some datasets FAILED - review the errors above. ***
+    echo.
+)
 pause
 exit /b 0
+
+REM === print_result: display one dataset's result line ===
+:print_result
+set "PR_IDX=%~1"
+for %%v in ("!PR_IDX!") do set "PR_ERR=!ERR_%%~v!"
+for %%v in ("!PR_IDX!") do set "PR_CODE=!ERRCODE_%%~v!"
+for %%v in ("!PR_IDX!") do set "PR_DIR=!SEL_%%~v!"
+if "!PR_ERR!"=="OK" (
+    echo   [!PR_IDX!] OK      !PR_DIR!
+) else (
+    echo   [!PR_IDX!] FAILED  !PR_ERR!  (exit !PR_CODE!)
+    echo          Dir: !PR_DIR!
+)
+goto :eof
 
 REM ============================================================
 REM === SUBROUTINES ===
@@ -383,6 +427,9 @@ if "!DO_REG!"=="1" (
 
     if !SPIM_EXIT! NEQ 0 (
         echo [WARNING] Process_SPIM.exe exited with code !SPIM_EXIT!.
+        set "ERR_!DS_IDX!=REG_FAIL"
+        set "ERRCODE_!DS_IDX!=!SPIM_EXIT!"
+        set /a FAIL_COUNT+=1
         if "!DO_COMPRESS!"=="1" (
             echo Skipping compression for this dataset -- fix the error and re-run.
         )
@@ -454,6 +501,9 @@ if "!DO_COMPRESS!"=="1" (
         echo   stack2h5_v2.exe completed successfully.
     ) else (
         echo [WARNING] stack2h5_v2.exe exited with code !H5_EXIT!.
+        set "ERR_!DS_IDX!=H5_FAIL"
+        set "ERRCODE_!DS_IDX!=!H5_EXIT!"
+        set /a FAIL_COUNT+=1
     )
 )
 
