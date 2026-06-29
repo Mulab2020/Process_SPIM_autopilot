@@ -461,9 +461,10 @@ if "!DO_COMPRESS!"=="1" (
     REM ---- Validate MPI core count against frame count ----
     set /a MAX_USEFUL_CORES=!EXPECTED_COUNT! + 1
     if !MPI_CORES! GTR !MAX_USEFUL_CORES! (
-        echo  [WARNING] MPI cores (!MPI_CORES!^) exceed useful limit for !EXPECTED_COUNT! frames.
+        echo  [ADJUST] MPI cores (!MPI_CORES!^) exceed useful limit for !EXPECTED_COUNT! frames.
         echo    Maximum useful cores: !MAX_USEFUL_CORES! (1 master + !EXPECTED_COUNT! workers)
-        echo    Using too many cores will cause stack2h5 to crash on unmatched workers.
+        echo    Capping MPI_CORES from !MPI_CORES! to !MAX_USEFUL_CORES!.
+        set MPI_CORES=!MAX_USEFUL_CORES!
         echo.
     )
 

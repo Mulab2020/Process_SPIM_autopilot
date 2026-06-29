@@ -11,6 +11,9 @@
 
 ### Changed
 - **`.gitignore`**: exclude `data/*` but keep `data/README.txt` tracked.
+- **MPI core auto-cap**: when `MPI_CORES` exceeds the useful limit for the
+  detected frame count, the warning is now an automatic correction — cores
+  are capped to `1 master + N workers` instead of letting the job crash.
 
 ---
 
