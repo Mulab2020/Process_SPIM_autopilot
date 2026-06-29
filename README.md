@@ -1,3 +1,13 @@
+> **⚠️ BROKEN — DO NOT RUN THIS VERSION ⚠️**
+>
+> This branch (`logging-attempt`) contains abandoned logging/streaming experiments
+> that **break real-time output and exit-code capture**.
+>
+> **Last runnable commit with logging:** `1c4f04d`
+> **First broken commit:** `c5ba081` (real-time streaming broke cmd output)
+>
+> For a working copy, use the `master` branch (v0.1.3) or a later stable release.
+
 # SPIM Autopilot — Batch Processing Script
 
 **`run_process_spim_and_compress_batch.bat`** automates SPIM registration and
