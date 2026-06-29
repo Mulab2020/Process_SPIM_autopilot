@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.5] — 2026-06-29
+
+### Added
+- **Pre-flight: stack count check**: before processing each dataset, the script
+  counts actual `*_CM{n}_CHN00.stack` files with a simple `for %%f` loop
+  (locale-independent) and compares to `max−min+1`. A mismatch warns about
+  missing frames before the tools encounter them, saving wasted GPU time.
+- **Pre-flight: `stack_dimension.log` check**: before compression, checks for
+  the dimension log under 4 naming variants (`Stack dimensions.log`,
+  `stack_dimension.log`, `stack_dimensions.log`, `Stack dimension.log`) and
+  warns if all are missing — `stack2h5` requires this file.
+- **MPI core count validation**: before compression, warns when `MPI_CORES`
+  exceeds `1 + frame_count` (the useful upper limit — extra workers would
+  crash on unmatched frames).
+
+---
+
 ## [0.1.4] — 2026-06-29
 
 ### Fixed

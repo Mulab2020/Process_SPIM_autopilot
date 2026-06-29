@@ -327,6 +327,24 @@ if "!DO_COMPRESS!"=="1" echo   H5 dir:      !H5_DIR!
 echo.
 
 REM ============================================================
+REM Pre-flight: count .stack files, warn if incomplete
+REM ============================================================
+REM Simple for-loop counter — locale-independent (do not use find /c /v).
+set "STACK_COUNT=0"
+for %%f in ("!SRC_DIR!\*_CM!CAM_NUM!_CHN00.stack") do set /a STACK_COUNT+=1
+set /a EXPECTED_COUNT=!MAX_FRAME! - !MIN_FRAME! + 1
+
+if !STACK_COUNT! NEQ !EXPECTED_COUNT! (
+    echo  [WARNING] Stack count mismatch for camera !CAM_NUM!:
+    echo    Expected: !EXPECTED_COUNT!  (frames !MIN_FRAME! - !MAX_FRAME!)
+    echo    Found:    !STACK_COUNT!  (missing frames will cause tool errors)
+    echo.
+) else (
+    echo   Stack count OK: !STACK_COUNT! files for camera !CAM_NUM!.
+    echo.
+)
+
+REM ============================================================
 REM Step A: Run Process_SPIM.exe (registration)
 REM ============================================================
 if "!DO_REG!"=="1" (
@@ -379,6 +397,28 @@ REM Step B: Run stack2h5_v2.exe via mpiexec (compression)
 REM ============================================================
 if "!DO_COMPRESS!"=="1" (
     set /a STEP_N+=1
+
+    REM ---- Pre-flight: check for dimension log (required by stack2h5) ----
+    set "HAS_DIM_LOG=0"
+    if exist "!SRC_DIR!\Stack dimensions.log" set "HAS_DIM_LOG=1"
+    if exist "!SRC_DIR!\stack_dimension.log"  set "HAS_DIM_LOG=1"
+    if exist "!SRC_DIR!\stack_dimensions.log" set "HAS_DIM_LOG=1"
+    if exist "!SRC_DIR!\Stack dimension.log"  set "HAS_DIM_LOG=1"
+    if "!HAS_DIM_LOG!"=="0" (
+        echo  [WARNING] dimension log not found in !SRC_DIR!
+        echo    (checked: Stack dimensions.log, stack_dimension.log)
+        echo    stack2h5 requires this file -- compression may fail.
+        echo.
+    )
+
+    REM ---- Validate MPI core count against frame count ----
+    set /a MAX_USEFUL_CORES=!EXPECTED_COUNT! + 1
+    if !MPI_CORES! GTR !MAX_USEFUL_CORES! (
+        echo  [WARNING] MPI cores (!MPI_CORES!^) exceed useful limit for !EXPECTED_COUNT! frames.
+        echo    Maximum useful cores: !MAX_USEFUL_CORES! (1 master + !EXPECTED_COUNT! workers)
+        echo    Using too many cores will cause stack2h5 to crash on unmatched workers.
+        echo.
+    )
 
     if not exist "!H5_DIR!" (
         mkdir "!H5_DIR!"
