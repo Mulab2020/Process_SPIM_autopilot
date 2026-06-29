@@ -6,6 +6,9 @@ data/*
 # h5 output
 *.h5
 
+# Agent notes and historical reference — track nothing new here
+archive/*.md
+
 # Temp files
 *.tmp
 %TEMP%/

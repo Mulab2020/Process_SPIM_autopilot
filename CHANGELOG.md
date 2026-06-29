@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.2.2] — 2026-06-29
+
+### Fixed
+- **False "stack count mismatch" warning in log**: `>> "file" echo ...` placed at the
+  start of a line inside an `if (...) else (...)` block causes cmd.exe to detach the
+  command from the block scope, executing it unconditionally.  The warning line always
+  landed in the log even when the `else` branch ran correctly on terminal — producing
+  messages like `expected 31, found 31`.  All 12 redirects moved to end-of-line
+  (`echo ... >> "file"`), the safe idiomatic form.
+
+### Added
+- **Real-time streaming output**: both `Process_SPIM.exe` and `stack2h5_v2.exe`
+  stdout+stderr are now displayed line-by-line on terminal and written to the log
+  as they run, via `for /f` loops.  Exit code is preserved through a tiny temp file
+  (`%TEMP%\spim_exit_*.txt` / `h5_exit_*.txt`) written by `call echo %%%%errorlevel%%%%`
+  inside the command pipe and read back with `set /p`.
+- **MPI core count validation**: before compression, warn when `MPI_CORES` exceeds
+  `1 + frame_count` (the useful upper limit — extra workers would crash on unmatched
+  frames).
+
+### Changed
+- **`SUMMARY_LOG` → `LOG_FILE`**: the separate `SPIM_LOG` / `H5_LOG` temp logs were
+  removed by the streaming change, so there is now a single log file — "summary" was
+  redundant.
+- **Improved "no raw directory" error**: when `data\` exists but has no `*raw` folders,
+  the current contents are listed with a hint about expected naming.
+- **gitignore**: add `archive/*.md` (agent notes, not for distribution).
+- Removed dead `SPIM_LOG` / `H5_LOG` variable initialization, clearing, and cleanup.
+  `ERRLOG_*` now points to `LOG_FILE` for failure reporting.
+
 ## [0.2.1] — 2026-06-27 — `56d2bd9`
 
 ### Changed

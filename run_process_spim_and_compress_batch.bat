@@ -27,7 +27,7 @@ set "LOG_DIR=data\logs"
 if not exist "!LOG_DIR!" mkdir "!LOG_DIR!"
 for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value 2^>nul') do set "DT=%%I"
 if "!DT!"=="" (set "LOG_STAMP=run_%RANDOM%") else (set "LOG_STAMP=!DT:~0,8!_!DT:~8,6!")
-set "SUMMARY_LOG=!LOG_DIR!\autopilot_!LOG_STAMP!.log"
+set "LOG_FILE=!LOG_DIR!\autopilot_!LOG_STAMP!.log"
 
 REM ============================================================
 REM Step 0: Select server (first prompt)
@@ -89,8 +89,14 @@ for /f "delims=" %%d in ('dir /s /b /ad "data\*raw" 2^>nul') do (
 )
 
 if !COUNT! EQU 0 (
-    echo [ERROR] No directory ending with "raw" found that contains .stack files.
-    echo Current: %cd%
+    echo [ERROR] No directory ending with "raw" found in data\.
+    if exist "data\" (
+        echo Current: 
+        dir /b /ad "data\*"
+        echo   Make sure your datasets are in subfolders of data\ and that each dataset folder ends with "raw".
+    ) else (
+        echo   The data\ folder does not exist. Create it and place your datasets inside.
+    )
     pause
     exit /b 1
 )
@@ -99,7 +105,7 @@ REM ============================================================
 REM Ask user to confirm each dataset one by one
 REM (shows full detected configuration for each)
 REM ============================================================
-echo Found !COUNT! raw director(y/ies) with .stack files:
+echo Found !COUNT! raw directories with .stack files:
 echo.
 
 set "SELECTED=0"
@@ -204,7 +210,7 @@ set "WARN_COUNT=0"
     echo   Datasets:     !SELECTED!
     echo ================================================================
     echo.
-) >> "!SUMMARY_LOG!"
+) >> "!LOG_FILE!"
 
 REM ============================================================
 REM Process each selected dataset in serial
@@ -230,7 +236,7 @@ if !FAIL_COUNT! GTR 0 (
     echo   !FAIL_COUNT! FAILED
     if !WARN_COUNT! GTR 0 echo   !WARN_COUNT! warning(s)
     echo.
-    echo   Full run log: !SUMMARY_LOG!
+    echo   Full run log: !LOG_FILE!
     echo   Per-dataset logs are in your TEMP directory ^(paths above^).
 )
 echo ================================================
@@ -357,8 +363,8 @@ set "STEP_N="
 set "STEPS="
 set "STACK_COUNT="
 set "EXPECTED_COUNT="
-set "SPIM_LOG="
-set "H5_LOG="
+set "SPIM_EXIT_FILE="
+set "H5_EXIT_FILE="
 
 echo.
 echo ##################################################
@@ -411,7 +417,7 @@ if !STACK_COUNT! NEQ !EXPECTED_COUNT! (
     echo    Expected: !EXPECTED_COUNT!  (frames !MIN_FRAME! - !MAX_FRAME!)
     echo    Found:    !STACK_COUNT!  ^(missing frames will cause tool errors^)
     echo.
-    >> "!SUMMARY_LOG!" echo   WARNING: stack count mismatch for cam !CAM_NUM! ^(expected !EXPECTED_COUNT!, found !STACK_COUNT!^)
+    echo   WARNING: stack count mismatch for cam !CAM_NUM! ^(expected !EXPECTED_COUNT!, found !STACK_COUNT!^) >> "!LOG_FILE!"
     set /a WARN_COUNT+=1
 ) else (
     echo   Stack count OK: !STACK_COUNT! files for camera !CAM_NUM!.
@@ -431,7 +437,6 @@ if "!DO_REG!"=="1" (
     )
 
     set "INPUTFILE=%TEMP%\spim_input_%RANDOM%.txt"
-    set "SPIM_LOG=%TEMP%\spim_log_%RANDOM%.log"
 
     REM Input order (matching kernel2.cu main()):
     REM   getline: sdir, tdir, rdir
@@ -451,24 +456,31 @@ if "!DO_REG!"=="1" (
     ) > "!INPUTFILE!"
 
     echo [Step !STEP_N!/!STEPS!] Running Process_SPIM.exe...
-    >> "!SUMMARY_LOG!" echo   [Step !STEP_N!/!STEPS!] Process_SPIM.exe
-    "%BIN_DIR%\Process_SPIM.exe" < "!INPUTFILE!" > "!SPIM_LOG!" 2>&1
-    set "SPIM_EXIT=!ERRORLEVEL!"
+    echo   [Step !STEP_N!/!STEPS!] Process_SPIM.exe >> "!LOG_FILE!"
+    set "SPIM_EXIT_FILE=%TEMP%\spim_exit_!RANDOM!.txt"
+    REM Use a for /f loop to capture both stdout and the exit code of Process_SPIM.exe
+    for /f "usebackq delims=" %%a in (`2^>^&1 "%BIN_DIR%\Process_SPIM.exe" ^< "!INPUTFILE!" ^& call echo %%%%errorlevel%%%% ^> "!SPIM_EXIT_FILE!"`) do (
+        echo %%a
+        echo %%a >> "!LOG_FILE!"
+    )
+    if exist "!SPIM_EXIT_FILE!" (
+        set /p SPIM_EXIT=<"!SPIM_EXIT_FILE!"
+        del "!SPIM_EXIT_FILE!" 2>nul
+    ) else (
+        set "SPIM_EXIT=1"
+    )
 
     del "!INPUTFILE!" 2>nul
-    type "!SPIM_LOG!"
 
     if !SPIM_EXIT! NEQ 0 (
         echo [WARNING] Process_SPIM.exe exited with code !SPIM_EXIT!.
-        echo   Log saved: !SPIM_LOG!
-        >> "!SUMMARY_LOG!" (
+        (
             echo     FAILED - exit code !SPIM_EXIT!
-            echo     Log: !SPIM_LOG!
             echo.
-        )
+        ) >> "!LOG_FILE!"
         set "ERR_!DS_IDX!=REG_FAIL"
         set "ERRCODE_!DS_IDX!=!SPIM_EXIT!"
-        set "ERRLOG_!DS_IDX!=!SPIM_LOG!"
+        set "ERRLOG_!DS_IDX!=!LOG_FILE!"
         set /a FAIL_COUNT+=1
         if "!DO_COMPRESS!"=="1" (
             echo Skipping compression for this dataset -- fix the error and re-run.
@@ -476,7 +488,6 @@ if "!DO_REG!"=="1" (
         goto :eof
     )
     echo   Process_SPIM.exe completed successfully.
-    del "!SPIM_LOG!" 2>nul
     echo.
 )
 
@@ -485,6 +496,18 @@ REM Step B: Run stack2h5_v2.exe via mpiexec (compression)
 REM ============================================================
 if "!DO_COMPRESS!"=="1" (
     set /a STEP_N+=1
+
+    REM ---- Validate MPI core count against frame count ----
+    set /a MAX_USEFUL_CORES=!EXPECTED_COUNT! + 1
+
+    if !MPI_CORES! GTR !MAX_USEFUL_CORES! (
+        echo  [WARNING] MPI cores ^(!MPI_CORES!^) exceed useful limit for !EXPECTED_COUNT! frames.
+        echo    Maximum useful cores: !MAX_USEFUL_CORES! (1 master + !EXPECTED_COUNT! workers)
+        echo    Using too many cores will cause stack2h5 to crash on unmatched workers.
+        echo.
+        echo   WARNING: MPI cores (!MPI_CORES!) exceed useful limit for !EXPECTED_COUNT! frames >> "!LOG_FILE!" 
+        set /a WARN_COUNT+=1
+    )
 
     REM stack2h5 requires the dimension log file (several naming
     REM variants exist — check them all)
@@ -498,7 +521,7 @@ if "!DO_COMPRESS!"=="1" (
         echo    ^(checked: Stack dimensions.log, stack_dimension.log^)
         echo    stack2h5 requires this file -- compression may fail.
         echo.
-        >> "!SUMMARY_LOG!" echo   WARNING: dimension log missing from !SRC_DIR!
+        echo   WARNING: dimension log missing from !SRC_DIR! >> "!LOG_FILE!"
         set /a WARN_COUNT+=1
     )
 
@@ -509,7 +532,6 @@ if "!DO_COMPRESS!"=="1" (
     )
 
     set "H5_INPUT=%TEMP%\h5_input_%RANDOM%.txt"
-    set "H5_LOG=%TEMP%\h5_log_%RANDOM%.log"
 
     REM Input order for stack2h5_v2.exe:
     REM   a) source folder (raw, with trailing backslash)
@@ -528,27 +550,33 @@ if "!DO_COMPRESS!"=="1" (
     ) > "!H5_INPUT!"
 
     echo [Step !STEP_N!/!STEPS!] Running stack2h5_v2.exe with !MPI_CORES! MPI cores...
-    >> "!SUMMARY_LOG!" echo   [Step !STEP_N!/!STEPS!] stack2h5_v2.exe ^(MPI !MPI_CORES! cores^)
-    "%BIN_DIR%\mpiexec.exe" -n !MPI_CORES! "%BIN_DIR%\stack2h5_v2.exe" < "!H5_INPUT!" > "!H5_LOG!" 2>&1
-    set "H5_EXIT=!ERRORLEVEL!"
+    echo   [Step !STEP_N!/!STEPS!] stack2h5_v2.exe ^(MPI !MPI_CORES! cores^) >> "!LOG_FILE!"
+    set "H5_EXIT_FILE=%TEMP%\h5_exit_!RANDOM!.txt"
+    REM Use a for /f loop to capture both stdout and the exit code of stack2h5_v2.exe
+    for /f "usebackq delims=" %%a in (`2^>^&1 "%BIN_DIR%\mpiexec.exe" -n !MPI_CORES! "%BIN_DIR%\stack2h5_v2.exe" ^< "!H5_INPUT!" ^& call echo %%%%errorlevel%%%% ^> "!H5_EXIT_FILE!"`) do (
+        echo %%a
+        echo %%a >> "!LOG_FILE!"
+    )
+    if exist "!H5_EXIT_FILE!" (
+        set /p H5_EXIT=<"!H5_EXIT_FILE!"
+        del "!H5_EXIT_FILE!" 2>nul
+    ) else (
+        set "H5_EXIT=1"
+    )
 
     del "!H5_INPUT!" 2>nul
-    type "!H5_LOG!"
 
     if !H5_EXIT! EQU 0 (
         echo   stack2h5_v2.exe completed successfully.
-        del "!H5_LOG!" 2>nul
     ) else (
         echo [WARNING] stack2h5_v2.exe exited with code !H5_EXIT!.
-        echo   Log saved: !H5_LOG!
-        >> "!SUMMARY_LOG!" (
+        (
             echo     FAILED - exit code !H5_EXIT!
-            echo     Log: !H5_LOG!
             echo.
-        )
+        ) >> "!LOG_FILE!"
         set "ERR_!DS_IDX!=H5_FAIL"
         set "ERRCODE_!DS_IDX!=!H5_EXIT!"
-        set "ERRLOG_!DS_IDX!=!H5_LOG!"
+        set "ERRLOG_!DS_IDX!=!LOG_FILE!"
         set /a FAIL_COUNT+=1
     )
 )
@@ -556,9 +584,9 @@ if "!DO_COMPRESS!"=="1" (
 REM If we got here without an error recorded, mark this dataset OK
 for %%v in ("!DS_IDX!") do set "DS_ERR=!ERR_%%~v!"
 if "!DS_ERR!"=="OK" (
-    >> "!SUMMARY_LOG!" echo   OK
+    echo   OK >> "!LOG_FILE!"
 )
->> "!SUMMARY_LOG!" echo.
+echo. >> "!LOG_FILE!"
 
 goto :eof
 
