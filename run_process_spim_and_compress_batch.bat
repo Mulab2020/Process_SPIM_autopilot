@@ -221,17 +221,20 @@ for /f "tokens=1-3 delims=_" %%a in ("!PV_SAMPLE!") do (
 set "PV_CAM=!PV_PART_B:~2,1!"
 call :parse_frame_part "!PV_PART_A!" PV_PREFIX PV_DIGITS
 
+REM Clear frame numbers (defense against pollution from previous calls)
+set "PV_MIN="
+set "PV_MAX="
+
 REM Find min / max frame via dir sort (first item only, constant time)
-for /f "delims=" %%a in ('dir /b /on "!PV_SRC!\*_CM!PV_CAM!_CHN00.stack" 2^>nul') do (
+REM No goto — would corrupt call stack inside call :preview_and_ask
+set "PV_MIN_FILE="
+set "PV_MAX_FILE="
+for /f "delims=" %%a in ('dir /b /on "!PV_SRC!\*_CM!PV_CAM!_CHN00.stack" 2^>nul') do if not defined PV_MIN_FILE (
     set "PV_MIN_FILE=%%a"
-    goto :pv_got_min_file
 )
-:pv_got_min_file
-for /f "delims=" %%a in ('dir /b /o-n "!PV_SRC!\*_CM!PV_CAM!_CHN00.stack" 2^>nul') do (
+for /f "delims=" %%a in ('dir /b /o-n "!PV_SRC!\*_CM!PV_CAM!_CHN00.stack" 2^>nul') do if not defined PV_MAX_FILE (
     set "PV_MAX_FILE=%%a"
-    goto :pv_got_max_file
 )
-:pv_got_max_file
 
 REM Parse frame strings from those two filenames
 for /f "tokens=1 delims=_" %%a in ("!PV_MIN_FILE!") do set "PV_FULL=%%a"
@@ -268,6 +271,22 @@ REM Honors global DO_REG / DO_COMPRESS flags set by the mode prompt.
 set "SRC_DIR=%~1"
 set "DS_IDX=%~2"
 set "DS_TOT=%~3"
+
+REM ---- Clear per-dataset state (no pollution from previous run) ----
+set "PREFIX="
+set "NAME_DIGIT="
+set "CAM_NUM="
+set "MIN_FRAME="
+set "MAX_FRAME="
+set "REF_FRAME="
+set "TGT_DIR="
+set "H5_DIR="
+set "SPIM_EXIT="
+set "H5_EXIT="
+set "STEP_N="
+set "STEPS="
+set "STACK_COUNT="
+set "EXPECTED_COUNT="
 
 echo.
 echo ##################################################

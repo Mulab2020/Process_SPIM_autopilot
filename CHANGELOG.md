@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.4] — 2026-06-29
+
+### Fixed
+- **`goto`-in-`for` call-stack corruption**: `goto :pv_got_min_file` and
+  `goto :pv_got_max_file` inside `for /f` loops within `call :preview_and_ask`
+  corrupt cmd.exe's `call` return stack, causing subsequent `call :str2num` and
+  other `call :label` commands to fail with "The system cannot find the batch
+  label." Replaced `goto` with `if not defined PV_MIN_FILE` / `if not defined
+  PV_MAX_FILE` guards — the loop processes all files but only captures the
+  first match (the same effect, but without breaking the call stack).
+- **Variable pollution across datasets**: all subroutines share a single
+  `setlocal enabledelayedexpansion` scope. Variables set during dataset N
+  can leak into dataset N+1, causing incorrect min/max values, stale exit
+  codes, and other subtle corruption. Now `:preview_and_ask` explicitly
+  clears `PV_MIN`, `PV_MAX`, `PV_MIN_FILE`, and `PV_MAX_FILE` before
+  min/max detection; `:process_dataset` resets all per-dataset working
+  variables (`PREFIX`, `NAME_DIGIT`, `CAM_NUM`, `MIN_FRAME`, `MAX_FRAME`,
+  `REF_FRAME`, `TGT_DIR`, `H5_DIR`, `SPIM_EXIT`, `H5_EXIT`, `STEP_N`,
+  `STEPS`, `STACK_COUNT`, `EXPECTED_COUNT`) at entry.
+
+---
+
 ## [0.1.3] — 2026-06-27 — `0a65e94`
 
 ### Changed
