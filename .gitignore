@@ -1,11 +1,8 @@
-# Large binary datasets
+# Large binary datasets — exclude everything except the hint file
 sample_data/
+data/*
+!data/README.txt
 
-# Executables and DLLs (kept in bin\ subfolder)
-bin/
-*.exe
-*.dll
-*.pdb
 
 # h5 output
 *.h5

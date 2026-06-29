@@ -1,0 +1,10 @@
+﻿使用说明
+1. 复制文件夹到本地，打开powershell，cd到当前文件夹下如  cd C:\Users\qy\Desktop\stack2h5
+2. 选择多少核，比如45个核，那就是         mpiexec.exe -n 160 h52stack_v2.exe
+					  mpiexec.exe -n 180 stack2h5_v2.exe
+3. 根据提示输入相关信息 （目录以'\'结尾）
+
+注意事项
+1. 至少两个核，因为有一个核是master，所以worker的个数是核数-1
+2. 假设提示不能使用mpiexec.exe，那么使用msmpisetup.exe安装mpi
+3. 确保stack_dimension.log在源目录下面
