@@ -13,3 +13,7 @@ bin/
 # Temp files
 *.tmp
 %TEMP%/
+
+# claude related
+.claude/
+archive/*.md
