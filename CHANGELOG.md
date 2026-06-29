@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.3] — 2026-06-29
+
+### Fixed
+- **Exit code misread as stale errorlevel**: the `call echo %%%%errorlevel%%%%` pattern
+  inside the `for /f` backtick pipeline expanded `%errorlevel%` at `cmd /c` parse time —
+  *before* the process ran — so the exit file always contained whatever errorlevel was
+  left by the previous command (usually 0, causing false FAILED verdicts for successful
+  runs).  Changed to `%%^^errorlevel%%` so the `^` blocks first-pass expansion and
+  `call` re-expands it correctly after the process exits.  Applied to both
+  `Process_SPIM.exe` and `mpiexec`/`stack2h5_v2.exe` pipelines.
+
 ## [0.2.2] — 2026-06-29
 
 ### Fixed
@@ -14,7 +25,7 @@
 - **Real-time streaming output**: both `Process_SPIM.exe` and `stack2h5_v2.exe`
   stdout+stderr are now displayed line-by-line on terminal and written to the log
   as they run, via `for /f` loops.  Exit code is preserved through a tiny temp file
-  (`%TEMP%\spim_exit_*.txt` / `h5_exit_*.txt`) written by `call echo %%%%errorlevel%%%%`
+  (`%TEMP%\spim_exit_*.txt` / `h5_exit_*.txt`) written by `call echo %%^^errorlevel%%`
   inside the command pipe and read back with `set /p`.
 - **MPI core count validation**: before compression, warn when `MPI_CORES` exceeds
   `1 + frame_count` (the useful upper limit — extra workers would crash on unmatched

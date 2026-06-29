@@ -459,7 +459,7 @@ if "!DO_REG!"=="1" (
     echo   [Step !STEP_N!/!STEPS!] Process_SPIM.exe >> "!LOG_FILE!"
     set "SPIM_EXIT_FILE=%TEMP%\spim_exit_!RANDOM!.txt"
     REM Use a for /f loop to capture both stdout and the exit code of Process_SPIM.exe
-    for /f "usebackq delims=" %%a in (`2^>^&1 "%BIN_DIR%\Process_SPIM.exe" ^< "!INPUTFILE!" ^& call echo %%%%errorlevel%%%% ^> "!SPIM_EXIT_FILE!"`) do (
+    for /f "usebackq delims=" %%a in (`2^>^&1 "%BIN_DIR%\Process_SPIM.exe" ^< "!INPUTFILE!" ^& call echo %%^^errorlevel%% ^> "!SPIM_EXIT_FILE!"`) do (
         echo %%a
         echo %%a >> "!LOG_FILE!"
     )
@@ -553,7 +553,7 @@ if "!DO_COMPRESS!"=="1" (
     echo   [Step !STEP_N!/!STEPS!] stack2h5_v2.exe ^(MPI !MPI_CORES! cores^) >> "!LOG_FILE!"
     set "H5_EXIT_FILE=%TEMP%\h5_exit_!RANDOM!.txt"
     REM Use a for /f loop to capture both stdout and the exit code of stack2h5_v2.exe
-    for /f "usebackq delims=" %%a in (`2^>^&1 "%BIN_DIR%\mpiexec.exe" -n !MPI_CORES! "%BIN_DIR%\stack2h5_v2.exe" ^< "!H5_INPUT!" ^& call echo %%%%errorlevel%%%% ^> "!H5_EXIT_FILE!"`) do (
+    for /f "usebackq delims=" %%a in (`2^>^&1 "%BIN_DIR%\mpiexec.exe" -n !MPI_CORES! "%BIN_DIR%\stack2h5_v2.exe" ^< "!H5_INPUT!" ^& call echo %%^^errorlevel%% ^> "!H5_EXIT_FILE!"`) do (
         echo %%a
         echo %%a >> "!LOG_FILE!"
     )
