@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.7] — 2026-06-29
+
+### Added
+- **`bin/` tracked in git**: all 12 files (Process_SPIM.exe, stack2h5_v2.exe,
+  mpiexec.exe, CUDA/HDF5/Intel runtime DLLs, debug symbols) are now committed
+  so the repository is self-contained for cloning onto lab servers.
+- **`data/README.txt` hint file**: explains the expected `data/*_raw` directory
+  structure with examples.
+
+### Changed
+- **`.gitignore`**: exclude `data/*` but keep `data/README.txt` tracked.
+
+---
+
 ## [0.1.6] — 2026-06-29
 
 ### Added
