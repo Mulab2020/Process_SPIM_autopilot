@@ -189,7 +189,9 @@ for /l %%s in (1,1,!SELECTED!) do (
 
 echo.
 echo ================================================
-echo   All datasets processed.
+echo   All datasets processed. Logs saved in %~dp0logs\.
+echo   Please manually verify the registration and/or compression results.
+echo   Then you may proceed cell segmentation with MATLAB codes.
 echo ================================================
 echo.
 pause
@@ -391,12 +393,10 @@ if "!DO_REG!"=="1" if "!SKIP_DATASET!" NEQ "1" (
 
     echo [Step !STEP_N!/!STEPS!] Running Process_SPIM.exe...
     "%BIN_DIR%\Process_SPIM.exe" < "!INPUTFILE!"
-    set "SPIM_EXIT=!ERRORLEVEL!"
 
     del "!INPUTFILE!" 2>nul
 
-    echo   Process_SPIM.exe completed for dataset !SRC_DIR! with error code !SPIM_EXIT!. 
-    echo   Please manually verify the registration results.
+    echo   Process_SPIM.exe completed for dataset !SRC_DIR!. 
     echo.
 )
 
@@ -458,12 +458,10 @@ if "!DO_COMPRESS!"=="1" if "!SKIP_DATASET!" NEQ "1" (
 
     echo [Step !STEP_N!/!STEPS!] Running stack2h5_v2.exe with !EFF_CORES! MPI cores...
     "%BIN_DIR%\mpiexec.exe" -n !EFF_CORES! "%BIN_DIR%\stack2h5_v2.exe" < "!H5_INPUT!"
-    set "H5_EXIT=!ERRORLEVEL!"
 
     del "!H5_INPUT!" 2>nul
 
-    echo   mpiexec.exe -n !EFF_CORES! stack2h5_v2.exe completed for dataset !SRC_DIR! with error code !H5_EXIT!.
-    echo   Please manually verify the h5 compression results.
+    echo   mpiexec.exe -n !EFF_CORES! stack2h5_v2.exe completed for dataset !SRC_DIR!.
     echo.
 )
 
@@ -501,7 +499,7 @@ if "!DO_COMPRESS!"=="1" if "!SKIP_DATASET!" NEQ "1" (
     set "DIM_LOG_DISPLAY=NO"
     if "!HAS_DIM_LOG!"=="1" set "DIM_LOG_DISPLAY=YES"
 
-    echo   Writing log: !LOG_FILE!
+    echo   Writing log...
     (
         echo ================================================
         echo   SPIM Processing Log
