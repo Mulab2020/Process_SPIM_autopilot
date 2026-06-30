@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.1.8] — 2026-06-30
+
+### Added
+- **Per-dataset processing logs**: after each dataset finishes, a timestamped
+  plain text log is written to `logs/<dataset>_<YYYY-MM-DD_HHMMSS>.log` with
+  source/registered/h5 dirs, frame range, reference frame, mode, MPI cores,
+  stack counts, mismatch flag, dimension log presence, and which operations ran.
+
+### Changed
+- **Removed exit-code error handling**: neither `Process_SPIM.exe` nor
+  `stack2h5_v2.exe` returns meaningful exit codes. Both steps now print a
+  completion message and instruct the user to manually verify results.
+- **Stack count mismatch now skips the dataset** instead of just warning.
+  Skipped datasets still get a log file documenting why they were skipped.
+- **Removed dead error-tracking code**: `ERR_*` / `ERRCODE_*` / `FAIL_COUNT`
+  arrays, `:print_result` subroutine, and the end-of-script RESULTS summary
+  table — all were vestigial after exit-code handling was dropped.
+
+### Fixed
+- **`DO_REG`/`DO_COMPRESS` global pollution**: setting them to 0 on a stack
+  mismatch silently skipped all subsequent datasets, not just the bad one.
+  Replaced with a local `SKIP_DATASET` flag scoped to the current dataset.
+- **`MPI_CORES` global pollution**: the per-dataset auto-cap was mutating the
+  global `MPI_CORES` variable. A small dataset that capped cores from 64→11
+  would starve all later datasets. Cap now uses a local `EFF_CORES` copy so
+  the user's original value is preserved for every dataset.
+
+---
+
 ## [0.1.7] — 2026-06-29
 
 ### Added

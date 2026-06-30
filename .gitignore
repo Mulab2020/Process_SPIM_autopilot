@@ -11,6 +11,9 @@ data/*
 *.tmp
 %TEMP%/
 
+# Per-dataset processing logs
+logs/
+
 # claude related
 .claude/
 archive/*.md

@@ -181,15 +181,6 @@ if "!DO_COMPRESS!"=="1" (
 )
 
 REM ============================================================
-REM Initialize per-dataset error tracking
-REM ============================================================
-for /l %%i in (1,1,!SELECTED!) do (
-    set "ERR_%%i=OK"
-    set "ERRCODE_%%i="
-)
-set "FAIL_COUNT=0"
-
-REM ============================================================
 REM Process each selected dataset in serial
 REM ============================================================
 for /l %%s in (1,1,!SELECTED!) do (
@@ -198,39 +189,11 @@ for /l %%s in (1,1,!SELECTED!) do (
 
 echo.
 echo ================================================
-echo   RESULTS
-echo ================================================
-for /l %%i in (1,1,!SELECTED!) do (
-    call :print_result %%i
-)
-echo ================================================
-set /a OK_COUNT=!SELECTED! - !FAIL_COUNT!
-echo   !OK_COUNT! of !SELECTED! succeeded
-if !FAIL_COUNT! GTR 0 (
-    echo   !FAIL_COUNT! FAILED
-)
+echo   All datasets processed.
 echo ================================================
 echo.
-if !FAIL_COUNT! GTR 0 (
-    echo *** Some datasets FAILED - review the errors above. ***
-    echo.
-)
 pause
 exit /b 0
-
-REM === print_result: display one dataset's result line ===
-:print_result
-set "PR_IDX=%~1"
-for %%v in ("!PR_IDX!") do set "PR_ERR=!ERR_%%~v!"
-for %%v in ("!PR_IDX!") do set "PR_CODE=!ERRCODE_%%~v!"
-for %%v in ("!PR_IDX!") do set "PR_DIR=!SEL_%%~v!"
-if "!PR_ERR!"=="OK" (
-    echo   [!PR_IDX!] OK      !PR_DIR!
-) else (
-    echo   [!PR_IDX!] FAILED  !PR_ERR!  (exit !PR_CODE!)
-    echo          Dir: !PR_DIR!
-)
-goto :eof
 
 REM ============================================================
 REM === SUBROUTINES ===
@@ -331,6 +294,8 @@ set "STEP_N="
 set "STEPS="
 set "STACK_COUNT="
 set "EXPECTED_COUNT="
+set "SKIP_DATASET="
+set "EFF_CORES="
 
 echo.
 echo ##################################################
@@ -379,19 +344,24 @@ for %%f in ("!SRC_DIR!\*_CM!CAM_NUM!_CHN00.stack") do set /a STACK_COUNT+=1
 set /a EXPECTED_COUNT=!MAX_FRAME! - !MIN_FRAME! + 1
 
 if !STACK_COUNT! NEQ !EXPECTED_COUNT! (
-    echo  [WARNING] Stack count mismatch for camera !CAM_NUM!:
+    echo  [SKIP] Stack count mismatch for camera !CAM_NUM!:
     echo    Expected: !EXPECTED_COUNT!  (frames !MIN_FRAME! - !MAX_FRAME!)
     echo    Found:    !STACK_COUNT!  (missing frames will cause tool errors)
+    echo    Skipping dataset: !SRC_DIR!
     echo.
+    set "STACK_MISMATCH=YES"
+    set "SKIP_DATASET=1"
 ) else (
     echo   Stack count OK: !STACK_COUNT! files for camera !CAM_NUM!.
     echo.
+    set "STACK_MISMATCH=NO"
+    set "SKIP_DATASET=0"
 )
 
 REM ============================================================
 REM Step A: Run Process_SPIM.exe (registration)
 REM ============================================================
-if "!DO_REG!"=="1" (
+if "!DO_REG!"=="1" if "!SKIP_DATASET!" NEQ "1" (
     set /a STEP_N+=1
 
     if not exist "!TGT_DIR!" (
@@ -425,24 +395,15 @@ if "!DO_REG!"=="1" (
 
     del "!INPUTFILE!" 2>nul
 
-    if !SPIM_EXIT! NEQ 0 (
-        echo [WARNING] Process_SPIM.exe exited with code !SPIM_EXIT!.
-        set "ERR_!DS_IDX!=REG_FAIL"
-        set "ERRCODE_!DS_IDX!=!SPIM_EXIT!"
-        set /a FAIL_COUNT+=1
-        if "!DO_COMPRESS!"=="1" (
-            echo Skipping compression for this dataset -- fix the error and re-run.
-        )
-        goto :eof
-    )
-    echo   Process_SPIM.exe completed successfully.
+    echo   Process_SPIM.exe completed for dataset !SRC_DIR! with error code !SPIM_EXIT!. 
+    echo   Please manually verify the registration results.
     echo.
 )
 
 REM ============================================================
 REM Step B: Run stack2h5_v2.exe via mpiexec (compression)
 REM ============================================================
-if "!DO_COMPRESS!"=="1" (
+if "!DO_COMPRESS!"=="1" if "!SKIP_DATASET!" NEQ "1" (
     set /a STEP_N+=1
 
     REM ---- Pre-flight: check for dimension log (required by stack2h5) ----
@@ -459,12 +420,15 @@ if "!DO_COMPRESS!"=="1" (
     )
 
     REM ---- Validate MPI core count against frame count ----
+    REM Use a local copy so the global MPI_CORES is not polluted for
+    REM subsequent datasets.
+    set "EFF_CORES=!MPI_CORES!"
     set /a MAX_USEFUL_CORES=!EXPECTED_COUNT! + 1
-    if !MPI_CORES! GTR !MAX_USEFUL_CORES! (
-        echo  [ADJUST] MPI cores (!MPI_CORES!^) exceed useful limit for !EXPECTED_COUNT! frames.
+    if !EFF_CORES! GTR !MAX_USEFUL_CORES! (
+        echo  [ADJUST] MPI cores (!EFF_CORES!^) exceed useful limit for !EXPECTED_COUNT! frames.
         echo    Maximum useful cores: !MAX_USEFUL_CORES! (1 master + !EXPECTED_COUNT! workers)
-        echo    Capping MPI_CORES from !MPI_CORES! to !MAX_USEFUL_CORES!.
-        set MPI_CORES=!MAX_USEFUL_CORES!
+        echo    Capping from !EFF_CORES! to !MAX_USEFUL_CORES! for this dataset.
+        set EFF_CORES=!MAX_USEFUL_CORES!
         echo.
     )
 
@@ -492,21 +456,76 @@ if "!DO_COMPRESS!"=="1" (
         echo !MAX_FRAME!
     ) > "!H5_INPUT!"
 
-    echo [Step !STEP_N!/!STEPS!] Running stack2h5_v2.exe with !MPI_CORES! MPI cores...
-    "%BIN_DIR%\mpiexec.exe" -n !MPI_CORES! "%BIN_DIR%\stack2h5_v2.exe" < "!H5_INPUT!"
+    echo [Step !STEP_N!/!STEPS!] Running stack2h5_v2.exe with !EFF_CORES! MPI cores...
+    "%BIN_DIR%\mpiexec.exe" -n !EFF_CORES! "%BIN_DIR%\stack2h5_v2.exe" < "!H5_INPUT!"
     set "H5_EXIT=!ERRORLEVEL!"
 
     del "!H5_INPUT!" 2>nul
 
-    if !H5_EXIT! EQU 0 (
-        echo   stack2h5_v2.exe completed successfully.
-    ) else (
-        echo [WARNING] stack2h5_v2.exe exited with code !H5_EXIT!.
-        set "ERR_!DS_IDX!=H5_FAIL"
-        set "ERRCODE_!DS_IDX!=!H5_EXIT!"
-        set /a FAIL_COUNT+=1
-    )
+    echo   mpiexec.exe -n !EFF_CORES! stack2h5_v2.exe completed for dataset !SRC_DIR! with error code !H5_EXIT!.
+    echo   Please manually verify the h5 compression results.
+    echo.
 )
+
+    REM ============================================================
+    REM Write per-dataset log
+    REM ============================================================
+
+    REM Ensure fallback values for variables that may not be set
+    REM (HAS_DIM_LOG is only set inside the compression block)
+    if not defined HAS_DIM_LOG set "HAS_DIM_LOG=0"
+
+    REM Timestamp (locale-independent via wmic)
+    for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value 2^>nul') do set "DT=%%I"
+    set "TS=!DT:~0,4!-!DT:~4,2!-!DT:~6,2!_!DT:~8,2!!DT:~10,2!!DT:~12,2!"
+
+    REM Extract dataset folder name from source dir
+    for %%a in ("!SRC_DIR!") do set "DS_NAME=%%~nxa"
+
+    REM Ensure logs directory exists
+    set "LOG_DIR=%~dp0logs"
+    if not exist "!LOG_DIR!" mkdir "!LOG_DIR!"
+    set "LOG_FILE=!LOG_DIR!\!DS_NAME!_!TS!.log"
+
+    REM Determine what modes actually ran
+    set "RAN_REG=no"
+    set "RAN_COMPRESS=no"
+    if "!DO_REG!"=="1" set "RAN_REG=yes"
+    if "!DO_COMPRESS!"=="1" set "RAN_COMPRESS=yes"
+
+    REM Format MPI cores display (use local EFF_CORES if compression ran)
+    set "MPI_DISPLAY=N/A"
+    if defined EFF_CORES set "MPI_DISPLAY=!EFF_CORES!"
+
+    REM Format dimension log as yes/no
+    set "DIM_LOG_DISPLAY=NO"
+    if "!HAS_DIM_LOG!"=="1" set "DIM_LOG_DISPLAY=YES"
+
+    echo   Writing log: !LOG_FILE!
+    (
+        echo ================================================
+        echo   SPIM Processing Log
+        echo   Dataset: !DS_NAME!
+        echo   Timestamp: !TS!
+        echo ================================================
+        echo   Source dir:       !SRC_DIR!
+        echo   Registered dir:   !TGT_DIR!
+        echo   H5 dir:           !H5_DIR!
+        echo   Frame range:      !MIN_FRAME! - !MAX_FRAME!
+        echo   Reference frame:  !REF_FRAME!
+        echo   Mode:             !MODE_LABEL!
+        echo   MPI cores:        !MPI_DISPLAY!
+        echo   Stack count:      !STACK_COUNT! found / !EXPECTED_COUNT! expected
+        echo   Stack mismatch:   !STACK_MISMATCH!
+        echo   Dimension log:    !DIM_LOG_DISPLAY!
+        echo   Operations run:
+        echo     Registration:   !RAN_REG!
+        echo     Compression:    !RAN_COMPRESS!
+        echo ================================================
+    ) > "!LOG_FILE!"
+
+    echo   Log saved: !LOG_FILE!
+    echo.
 
 goto :eof
 
