@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.9] — 2026-06-30
+
+### Fixed
+- **Escaped literal `)` in `echo` inside parenthesized `if` blocks**: five
+  unescaped close-parens in echo text would prematurely terminate their
+  enclosing `if`/`else` blocks, causing syntax errors or commands leaking
+  outside conditionals. Affected the stack-count mismatch warning, the
+  dimension-log warning, the MPI cores auto-cap message, and the "registration
+  only" mode summary line. Escaped all with `^)`.
+
+---
+
 ## [0.1.8] — 2026-06-30
 
 ### Added

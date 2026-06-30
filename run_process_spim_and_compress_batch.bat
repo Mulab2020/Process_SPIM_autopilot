@@ -167,7 +167,7 @@ echo   Datasets to process: !SELECTED!
 if "!DO_COMPRESS!"=="1" (
     echo   MPI cores for h5 compression: !MPI_CORES!
 ) else (
-    echo   MPI cores: not used (registration only)
+    echo   MPI cores: not used (registration only^)
 )
 echo ================================================
 echo.
@@ -347,8 +347,8 @@ set /a EXPECTED_COUNT=!MAX_FRAME! - !MIN_FRAME! + 1
 
 if !STACK_COUNT! NEQ !EXPECTED_COUNT! (
     echo  [SKIP] Stack count mismatch for camera !CAM_NUM!:
-    echo    Expected: !EXPECTED_COUNT!  (frames !MIN_FRAME! - !MAX_FRAME!)
-    echo    Found:    !STACK_COUNT!  (missing frames will cause tool errors)
+    echo    Expected: !EXPECTED_COUNT!  (frames !MIN_FRAME! - !MAX_FRAME!^)
+    echo    Found:    !STACK_COUNT!  (missing frames will cause tool errors^)
     echo    Skipping dataset: !SRC_DIR!
     echo.
     set "STACK_MISMATCH=YES"
@@ -414,7 +414,7 @@ if "!DO_COMPRESS!"=="1" if "!SKIP_DATASET!" NEQ "1" (
     if exist "!SRC_DIR!\Stack dimension.log"  set "HAS_DIM_LOG=1"
     if "!HAS_DIM_LOG!"=="0" (
         echo  [WARNING] dimension log not found in !SRC_DIR!
-        echo    (checked: Stack dimensions.log, stack_dimension.log)
+        echo    (checked: Stack dimensions.log, stack_dimension.log^)
         echo    stack2h5 requires this file -- compression may fail.
         echo.
     )
@@ -426,7 +426,7 @@ if "!DO_COMPRESS!"=="1" if "!SKIP_DATASET!" NEQ "1" (
     set /a MAX_USEFUL_CORES=!EXPECTED_COUNT! + 1
     if !EFF_CORES! GTR !MAX_USEFUL_CORES! (
         echo  [ADJUST] MPI cores (!EFF_CORES!^) exceed useful limit for !EXPECTED_COUNT! frames.
-        echo    Maximum useful cores: !MAX_USEFUL_CORES! (1 master + !EXPECTED_COUNT! workers)
+        echo    Maximum useful cores: !MAX_USEFUL_CORES! (1 master + !EXPECTED_COUNT! workers^)
         echo    Capping from !EFF_CORES! to !MAX_USEFUL_CORES! for this dataset.
         set EFF_CORES=!MAX_USEFUL_CORES!
         echo.
