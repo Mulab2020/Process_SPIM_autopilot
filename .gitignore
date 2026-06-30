@@ -17,3 +17,4 @@ logs/
 # claude related
 .claude/
 archive/*.md
+!archive/lessons-learned.md
