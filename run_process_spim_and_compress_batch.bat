@@ -363,7 +363,7 @@ if !STACK_COUNT! NEQ !EXPECTED_COUNT! (
 REM ============================================================
 REM Step A: Run Process_SPIM.exe (registration)
 REM ============================================================
-if "!DO_REG!"=="1" if "!SKIP_DATASET!" NEQ "1" (
+if "!DO_REG!"=="1" if "!SKIP_DATASET!" == "1" (
     set /a STEP_N+=1
 
     if not exist "!TGT_DIR!" (
@@ -403,7 +403,7 @@ if "!DO_REG!"=="1" if "!SKIP_DATASET!" NEQ "1" (
 REM ============================================================
 REM Step B: Run stack2h5_v2.exe via mpiexec (compression)
 REM ============================================================
-if "!DO_COMPRESS!"=="1" if "!SKIP_DATASET!" NEQ "1" (
+if "!DO_COMPRESS!"=="1" if "!SKIP_DATASET!" == "1" (
     set /a STEP_N+=1
 
     REM ---- Pre-flight: check for dimension log (required by stack2h5) ----
