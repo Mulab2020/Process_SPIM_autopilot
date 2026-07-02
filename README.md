@@ -49,8 +49,12 @@ directory whose name ends with **`raw`** and that contains at least one
 
 ### Preparing your data
 
-1. Create a folder under `data\` with a name ending in **`_raw`**, e.g.
-   `data\tm_20250601_raw\`.
+1. Create a folder whose name ends in **`_raw`** (flat) **or** a folder
+   named **`raw`** inside a parent directory (nested).  Both layouts are
+   detected automatically:
+
+   - Flat: `data\tm_20250601_raw\`
+   - Nested: `data\tm_20250601\raw\`
 2. Place your `.stack` files inside.  The naming convention is:
 
    ```
@@ -63,19 +67,20 @@ directory whose name ends with **`raw`** and that contains at least one
    in the same directory (required by `stack2h5`).  Common names:
    `Stack dimensions.log`, `stack_dimension.log`.
 
-4. Run the script — it will scan `data\*_raw`, detect your datasets, and
-   prompt you to confirm each one.
+4. Run the script — it will scan `data\` recursively for any directory
+   ending in `raw`, detect your datasets, and prompt you to confirm each one.
 
 ### Deliverables
 
 | Step | Input | Output | Location |
 |---|---|---|---|
-| Registration | `data\*_raw\*.stack` | Registered TIFF stacks | `data\*_registered\` |
-| Compression | `data\*_raw\*.stack` + dimension log | h5 datasets | `data\*_h5\` |
+| Registration | `*.stack` in the `raw` folder | Registered TIFF stacks | Sibling `registered` folder |
+| Compression | `*.stack` + dimension log in the `raw` folder | h5 datasets | Sibling `h5` folder |
 
-Both output directories are created automatically alongside the source
-directory (the script replaces `raw` with `registered` / `h5` in the
-path).
+Both output directories are created automatically.  The script replaces
+`raw` with `registered` / `h5` in the source path, so:
+
+- `data\tm_20250601\raw\` → `data\tm_20250601\registered\`, `data\tm_20250601\h5\`
 
 
 ## Workflow
@@ -99,9 +104,10 @@ exist in `bin\`.
 
 ### 3. Scan for datasets
 
-Searches `data\*raw` recursively.  Every matching directory is collected into
-a candidate list.  If no directories are found, the script lists the contents
-of `data\` with guidance on expected naming.
+Searches `data\` recursively for any directory whose name ends in `raw`.
+Every matching directory is collected into a candidate list.  If none are
+found, the script lists the contents of `data\` with guidance on the
+expected layout.
 
 ### 4. Confirm each dataset
 
