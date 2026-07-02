@@ -82,6 +82,10 @@ Both output directories are created automatically.  The script replaces
 
 - `data\tm_20250601\raw\` → `data\tm_20250601\registered\`, `data\tm_20250601\h5\`
 
+> **Note:** According to the source code of `Process_SPIM.exe`, the registered
+> TIFF files are **transposed** relative to the raw stack images.  The
+> `plane.stackf` files, however, retain the original orientation.
+
 
 ## Workflow
 
