@@ -74,7 +74,7 @@ directory whose name ends with **`raw`** and that contains at least one
 
 | Step | Input | Output | Location |
 |---|---|---|---|
-| Registration | `*.stack` in the `raw` folder | Registered TIFF stacks | Sibling `registered` folder |
+| Registration | `*.stack` in the `raw` folder | Registered stacks organized in planes in raw format + average and reference frames in TIFF format | Sibling `registered` folder |
 | Compression | `*.stack` + dimension log in the `raw` folder | h5 datasets | Sibling `h5` folder |
 
 Both output directories are created automatically.  The script replaces
