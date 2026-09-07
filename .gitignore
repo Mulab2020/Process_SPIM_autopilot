@@ -17,7 +17,11 @@ logs/
 # claude related
 .claude/
 archive/*.md
+<<<<<<< HEAD
 
 
 # MacOS
 .DS_Store
+=======
+!archive/lessons-learned.md
+>>>>>>> c276229e56e43165d625dcd5af0dfe53553b8385
