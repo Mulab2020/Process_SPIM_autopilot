@@ -17,3 +17,7 @@ logs/
 # claude related
 .claude/
 archive/*.md
+
+
+# MacOS
+.DS_Store
