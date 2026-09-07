@@ -20,9 +20,11 @@ individually before processing begins.
 
 ## Directory layout
 
-The script directory contains two user-facing files:
+The script directory contains three user-facing files:
 
-- `run_process_spim_and_compress_batch.bat` — the script
+- `run_process_spim_and_compress_batch.bat` — the main script
+- `single_plane_variant.bat` — single-plane variant of the main script (see
+  [Single-plane variant](#single-plane-variant))
 - `README.md` — this documentation
 
 All executables and DLLs live in `bin\`:
@@ -30,6 +32,7 @@ All executables and DLLs live in `bin\`:
 | File | Purpose |
 |---|---|
 | `bin\Process_SPIM.exe`    | SPIM registration (CUDA) |
+| `bin\Process_SPIM_SinglePlane_v1.0.exe` | SPIM registration for single-plane acquisitions (copy manually; used only by `single_plane_variant.bat`) |
 | `bin\stack2h5_v2.exe`     | h5 compression worker (MPI) |
 | `bin\stack2h5_mpi.exe`    | older MPI worker (kept for reference) |
 | `bin\mpiexec.exe`         | MPI launcher |
@@ -211,6 +214,63 @@ If any dataset failed, a `*** Some datasets FAILED ***` banner holds the
 screen so you can review the errors before the terminal closes.
 
 
+## Single-plane variant
+
+**`single_plane_variant.bat`** is a copy of the main script adapted for
+**single-plane acquisitions**.  It is used much less often than the main
+workflow, so it is kept as a separate script that **tracks the main
+script**: every change to the main workflow (dataset scanning, prompts,
+pre-flights, logging, compression) is mirrored here.  Only the differences
+below are intentional.
+
+### Differences from the main script
+
+| | Main script | Single-plane variant |
+|---|---|---|
+| Registration exe | `Process_SPIM.exe` | `Process_SPIM_SinglePlane_v1.0.exe` |
+| Server selection prompt | Yes — first prompt | **Removed** (the exe takes no `server_ind`) |
+| `EXT_REF` / `RDIR` defaults | Present | **Removed** (the exe takes no `extRef` / `rdir`) |
+| Registration stdin | 10 values (incl. server_ind, extRef, rdir) | 7 values (below) |
+| Single-plane XML check | — | Added (warn-only) |
+
+Everything else — dataset scanning, per-dataset confirmation, mode
+selection, MPI compression, pre-flights, per-dataset logs — is identical.
+The reference time point is auto-computed as the **middle of the min–max
+frame range**, exactly like the main script.
+
+Registration input order (fed via a temporary file, one value per line):
+
+1. Source directory
+2. Target directory
+3. Digits of file names
+4. Min time point
+5. Max time point
+6. Reference time point
+7. Camera number
+
+Note: directories are passed **with** a trailing backslash (`\`), as
+required by the exe (same convention as `stack2h5_v2.exe`).
+
+### Single-plane verification (warn-only)
+
+For each dataset the script checks `<raw dir>\ch0_cam<CAM>.xml` for the
+line:
+
+```xml
+<info hs_single_plane="T" />
+```
+
+- `"T"` → verified; processing proceeds normally.
+- `"F"`, missing file, or missing line → a `[WARNING]` is shown during
+  dataset confirmation and again before registration.  The dataset is
+  **never skipped automatically** — you decide via the confirmation prompt.
+
+The detected value is recorded in the per-dataset log.
+
+Note: `Process_SPIM_SinglePlane_v1.0.exe` is **not yet** in the repository —
+copy it (and any DLLs it needs) into `bin\` before running the variant.
+
+
 ## Configurable defaults (edit the `.bat` file)
 
 | Variable | Default | Purpose |
@@ -225,7 +285,8 @@ screen so you can review the errors before the terminal closes.
 ## Important notes
 
 - The server index and the registration/compression mode are both
-  chosen interactively at the start of each run.
+  chosen interactively at the start of each run (main script only — the
+  single-plane variant has no server prompt).
 - The MPI core count is adjusted interactively only when a
   compression step will run.
 - Ensure a dimension log file exists in each source directory
