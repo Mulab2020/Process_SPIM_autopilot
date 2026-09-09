@@ -80,8 +80,13 @@ directory whose name ends with **`raw`** and that contains at least one
 | Registration | `*.stack` in the `raw` folder | Registered stacks organized in planes in raw format + average and reference frames in TIFF format | Sibling `registered` folder |
 | Compression | `*.stack` + dimension log in the `raw` folder | h5 datasets | Sibling `h5` folder |
 
-Both output directories are created automatically.  The script replaces
-`raw` with `registered` / `h5` in the source path, so:
+Both output directories are created automatically.  Before each step runs,
+the script also copies metadata files from the `raw` folder into the
+corresponding output folder: `*.xml`, `*.txt`, `*.log`, and
+`Background_<camera>.tif` (camera as detected from the file names; missing
+files produce a warning only).  The per-dataset log records the outcome per
+destination (`yes` / `partial` / `no`).  The script replaces `raw` with
+`registered` / `h5` in the source path, so:
 
 - `data\tm_20250601\raw\` → `data\tm_20250601\registered\`, `data\tm_20250601\h5\`
 
@@ -183,12 +188,16 @@ extra workers would crash on unmatched frames).
 #### e) Registration step — `Process_SPIM.exe` *(if selected)*
 
 - Target directory: `<raw>` → `<registered>` (created automatically).
+- Metadata files (`*.xml`, `*.txt`, `*.log`, `Background_<cam>.tif`) are
+  copied from the raw folder into the target directory before the exe runs.
 - Input is fed via a temporary text file.
 - In **Both** mode, a non-zero exit code skips compression for this dataset.
 
 #### f) Compression step — `stack2h5_v2.exe` (MPI) *(if selected)*
 
 - Target directory: `<raw>` → `<h5>` (created automatically).
+- Metadata files (`*.xml`, `*.txt`, `*.log`, `Background_<cam>.tif`) are
+  copied from the raw folder into the target directory before the exe runs.
 - Executed as: `bin\mpiexec.exe -n <cores> bin\stack2h5_v2.exe`
 - Input values passed via stdin:
   1. Source folder (raw, trailing backslash)

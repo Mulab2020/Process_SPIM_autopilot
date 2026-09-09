@@ -298,6 +298,9 @@ set "STACK_COUNT="
 set "EXPECTED_COUNT="
 set "SKIP_DATASET="
 set "EFF_CORES="
+set "META_REG=not run"
+set "META_H5=not run"
+set "META_STATUS="
 
 echo.
 echo ##################################################
@@ -372,6 +375,13 @@ if "!DO_REG!"=="1" if "!SKIP_DATASET!" NEQ "1" (
         echo.
     )
 
+    REM ---- Copy metadata (xml/txt/log/Background) into the registered dir ----
+    REM Runs before the exe so the folder is complete even if registration fails.
+    echo   Copying metadata files into !TGT_DIR! ...
+    call :copy_metadata "!TGT_DIR!"
+    set "META_REG=!META_STATUS!"
+    echo.
+
     set "INPUTFILE=%TEMP%\spim_input_%RANDOM%.txt"
 
     REM Input order (matching kernel2.cu main()):
@@ -437,6 +447,13 @@ if "!DO_COMPRESS!"=="1" if "!SKIP_DATASET!" NEQ "1" (
         echo Created: !H5_DIR!
         echo.
     )
+
+    REM ---- Copy metadata (xml/txt/log/Background) into the h5 dir ----
+    REM Runs before the exe so the folder is complete even if compression fails.
+    echo   Copying metadata files into !H5_DIR! ...
+    call :copy_metadata "!H5_DIR!"
+    set "META_H5=!META_STATUS!"
+    echo.
 
     set "H5_INPUT=%TEMP%\h5_input_%RANDOM%.txt"
 
@@ -519,12 +536,61 @@ if "!DO_COMPRESS!"=="1" if "!SKIP_DATASET!" NEQ "1" (
         echo   Operations run:
         echo     Registration:   !RAN_REG!
         echo     Compression:    !RAN_COMPRESS!
+        echo   Metadata copy:
+        echo     Registered dir:   !META_REG!
+        echo     H5 dir:           !META_H5!
         echo ================================================
     ) > "!LOG_FILE!"
 
     echo   Log saved: !LOG_FILE!
     echo.
 
+goto :eof
+
+REM === copy_metadata: copy metadata files from the raw dir into an output dir ===
+REM Args: %1 = destination dir (registered or h5)
+REM Copies *.xml, *.txt, *.log and Background_!CAM_NUM!.tif (detected cam).
+REM Sets META_STATUS = yes / partial / no (for the per-dataset log).
+REM Warn-only: missing or uncopyable files never abort the dataset.
+:copy_metadata
+set "CM_DST=%~1"
+set "CM_COPIED=0"
+set "CM_MISS=0"
+for %%e in (xml txt log) do (
+    if exist "!SRC_DIR!\*.%%e" (
+        copy /y "!SRC_DIR!\*.%%e" "!CM_DST!\" >nul
+        if errorlevel 1 (
+            echo  [WARNING] Copy failed: !SRC_DIR!\*.%%e -^> !CM_DST!
+            set /a CM_MISS+=1
+        ) else (
+            set /a CM_COPIED+=1
+        )
+    ) else (
+        echo  [WARNING] No .%%e files in !SRC_DIR!
+        set /a CM_MISS+=1
+    )
+)
+if exist "!SRC_DIR!\Background_!CAM_NUM!.tif" (
+    copy /y "!SRC_DIR!\Background_!CAM_NUM!.tif" "!CM_DST!\" >nul
+    if errorlevel 1 (
+        echo  [WARNING] Copy failed: Background_!CAM_NUM!.tif -^> !CM_DST!
+        set /a CM_MISS+=1
+    ) else (
+        set /a CM_COPIED+=1
+    )
+) else (
+    echo  [WARNING] Background_!CAM_NUM!.tif not found in !SRC_DIR!
+    set /a CM_MISS+=1
+)
+if !CM_COPIED! GTR 0 (
+    if !CM_MISS! GTR 0 (
+        set "META_STATUS=partial"
+    ) else (
+        set "META_STATUS=yes"
+    )
+) else (
+    set "META_STATUS=no"
+)
 goto :eof
 
 REM === parse_frame_part: split "TM0000009" into prefix and digit count ===
