@@ -10,8 +10,8 @@ h5 compression for light-sheet microscopy datasets.
 This batch script performs SPIM registration and/or h5 compression for each
 selected dataset:
 
-1. SPIM registration via `Process_SPIM.exe` (raw → registered)
-2. h5 compression  via `stack2h5_v2.exe` / MPI   (raw → h5)
+1. h5 compression  via `stack2h5_v2.exe` / MPI   (raw → h5)
+2. SPIM registration via `Process_SPIM.exe` (raw → registered)
 
 All processing runs in serial — only one GPU / MPI task at a time.  Multiple
 datasets can be queued in one run; the script asks you to confirm each one
@@ -77,8 +77,8 @@ directory whose name ends with **`raw`** and that contains at least one
 
 | Step | Input | Output | Location |
 |---|---|---|---|
-| Registration | `*.stack` in the `raw` folder | Registered stacks organized in planes in raw format + average and reference frames in TIFF format | Sibling `registered` folder |
 | Compression | `*.stack` + dimension log in the `raw` folder | h5 datasets | Sibling `h5` folder |
+| Registration | `*.stack` in the `raw` folder | Registered stacks organized in planes in raw format + average and reference frames in TIFF format | Sibling `registered` folder |
 
 Both output directories are created automatically.  Before each step runs,
 the script also copies metadata files from the `raw` folder into the
@@ -142,13 +142,13 @@ point so later steps reuse them without re-scanning.
 ```
 1) Registration only   (raw -> registered)
 2) Compression only    (raw -> h5)
-3) Both                (registration then compression)  [default]
+3) Both                (compression then registration)  [default]
 ```
 
 - Option **1** runs only `Process_SPIM.exe`.
 - Option **2** runs only `stack2h5_v2.exe` (MPI cores are used).
-- Option **3** runs both; if registration fails for a dataset, its compression
-  is skipped and the script moves on.
+- Option **3** runs both steps for each dataset — compression first, then
+  registration.
 
 Step labels show `[Step n/m]` where *m* is the number of steps actually run
 for the chosen mode (1 or 2).
@@ -185,15 +185,7 @@ naming variants), the script warns — it is required by `stack2h5`.
 Warns when `MPI_CORES` exceeds `1 + frame_count` (the useful upper limit —
 extra workers would crash on unmatched frames).
 
-#### e) Registration step — `Process_SPIM.exe` *(if selected)*
-
-- Target directory: `<raw>` → `<registered>` (created automatically).
-- Metadata files (`*.xml`, `*.txt`, `*.log`, `Background_<cam>.tif`) are
-  copied from the raw folder into the target directory before the exe runs.
-- Input is fed via a temporary text file.
-- In **Both** mode, a non-zero exit code skips compression for this dataset.
-
-#### f) Compression step — `stack2h5_v2.exe` (MPI) *(if selected)*
+#### e) Compression step — `stack2h5_v2.exe` (MPI) *(if selected)*
 
 - Target directory: `<raw>` → `<h5>` (created automatically).
 - Metadata files (`*.xml`, `*.txt`, `*.log`, `Background_<cam>.tif`) are
@@ -206,6 +198,13 @@ extra workers would crash on unmatched frames).
   4. Camera index (0 or 1)
   5. Min frame number
   6. Max frame number
+
+#### f) Registration step — `Process_SPIM.exe` *(if selected)*
+
+- Target directory: `<raw>` → `<registered>` (created automatically).
+- Metadata files (`*.xml`, `*.txt`, `*.log`, `Background_<cam>.tif`) are
+  copied from the raw folder into the target directory before the exe runs.
+- Input is fed via a temporary text file.
 
 ### 8. Results summary
 
@@ -300,9 +299,8 @@ copy it (and any DLLs it needs) into `bin\` before running the variant.
   compression step will run.
 - Ensure a dimension log file exists in each source directory
   before running the compression step (`stack2h5` requirement).
-- If a dataset fails during `Process_SPIM` in "Both" mode, its
-  compression step is skipped so the remaining datasets can still
-  be processed.
+- In "Both" mode, compression runs first, then registration, for each
+  dataset.
 - Directories passed to `stack2h5_v2.exe` end with a backslash (`\`)
   as required by that tool.
 - At least 2 MPI cores are needed: 1 master + N−1 workers.

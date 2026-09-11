@@ -118,7 +118,7 @@ echo --------------------------------------------
 echo  What should be done with the selected datasets?
 echo   1) Registration only   (raw -^> registered)
 echo   2) Compression only    (raw -^> h5)
-echo   3) Both                (registration then compression)  [default]
+echo   3) Both                (compression then registration)  [default]
 echo --------------------------------------------
 set "MODE_CHOICE="
 set /p MODE_CHOICE="Enter choice [3]: "
@@ -138,7 +138,7 @@ if "!MODE_CHOICE!"=="1" (
     goto ask_mode
 )
 set "MODE_LABEL="
-if "!DO_REG!"=="1" if "!DO_COMPRESS!"=="1" set "MODE_LABEL=Both (registration + compression)"
+if "!DO_REG!"=="1" if "!DO_COMPRESS!"=="1" set "MODE_LABEL=Both (compression + registration)"
 if "!DO_REG!"=="1" if not "!DO_COMPRESS!"=="1" set "MODE_LABEL=Registration only"
 if not "!DO_REG!"=="1" if "!DO_COMPRESS!"=="1" set "MODE_LABEL=Compression only"
 echo Mode: !MODE_LABEL!
@@ -347,8 +347,8 @@ echo   Frame range: !MIN_FRAME! - !MAX_FRAME!
 echo   Ref frame:   !REF_FRAME!  (middle)
 echo.
 echo   Source dir:  !SRC_DIR!
-if "!DO_REG!"=="1" echo   Regist dir:  !TGT_DIR!
 if "!DO_COMPRESS!"=="1" echo   H5 dir:      !H5_DIR!
+if "!DO_REG!"=="1" echo   Regist dir:  !TGT_DIR!
 echo.
 
 REM ============================================================
@@ -399,55 +399,7 @@ if !STACK_COUNT! NEQ !EXPECTED_COUNT! (
 )
 
 REM ============================================================
-REM Step A: Run Process_SPIM_SinglePlane_v1.0.exe (registration)
-REM ============================================================
-if "!DO_REG!"=="1" if "!SKIP_DATASET!" NEQ "1" (
-    set /a STEP_N+=1
-
-    if not exist "!TGT_DIR!" (
-        mkdir "!TGT_DIR!"
-        echo Created: !TGT_DIR!
-        echo.
-    )
-
-    REM ---- Copy metadata (xml/txt/log/Background) into the registered dir ----
-    REM Runs before the exe so the folder is complete even if registration fails.
-    echo   Copying metadata files into !TGT_DIR! ...
-    call :copy_metadata "!TGT_DIR!"
-    set "META_REG=!META_STATUS!"
-    echo.
-
-    set "INPUTFILE=%TEMP%\spim_input_%RANDOM%.txt"
-
-    REM Input order (Process_SPIM_SinglePlane_v1.0.exe):
-    REM   1) source dir (with trailing backslash)
-    REM   2) target dir (with trailing backslash)
-    REM   3) digits of filenames
-    REM   4) min time point
-    REM   5) max time point
-    REM   6) reference time point
-    REM   7) camera number
-    (
-        echo !SRC_DIR!\
-        echo !TGT_DIR!\
-        echo !NAME_DIGIT!
-        echo !MIN_FRAME!
-        echo !MAX_FRAME!
-        echo !REF_FRAME!
-        echo !CAM_NUM!
-    ) > "!INPUTFILE!"
-
-    echo [Step !STEP_N!/!STEPS!] Running Process_SPIM_SinglePlane_v1.0.exe...
-    "%BIN_DIR%\Process_SPIM_SinglePlane_v1.0.exe" < "!INPUTFILE!"
-
-    del "!INPUTFILE!" 2>nul
-
-    echo   Process_SPIM_SinglePlane_v1.0.exe completed for dataset !SRC_DIR!. 
-    echo.
-)
-
-REM ============================================================
-REM Step B: Run stack2h5_v2.exe via mpiexec (compression)
+REM Step A: Run stack2h5_v2.exe via mpiexec (compression)
 REM ============================================================
 if "!DO_COMPRESS!"=="1" if "!SKIP_DATASET!" NEQ "1" (
     set /a STEP_N+=1
@@ -515,6 +467,54 @@ if "!DO_COMPRESS!"=="1" if "!SKIP_DATASET!" NEQ "1" (
     del "!H5_INPUT!" 2>nul
 
     echo   mpiexec.exe -n !EFF_CORES! stack2h5_v2.exe completed for dataset !SRC_DIR!.
+    echo.
+)
+
+REM ============================================================
+REM Step B: Run Process_SPIM_SinglePlane_v1.0.exe (registration)
+REM ============================================================
+if "!DO_REG!"=="1" if "!SKIP_DATASET!" NEQ "1" (
+    set /a STEP_N+=1
+
+    if not exist "!TGT_DIR!" (
+        mkdir "!TGT_DIR!"
+        echo Created: !TGT_DIR!
+        echo.
+    )
+
+    REM ---- Copy metadata (xml/txt/log/Background) into the registered dir ----
+    REM Runs before the exe so the folder is complete even if registration fails.
+    echo   Copying metadata files into !TGT_DIR! ...
+    call :copy_metadata "!TGT_DIR!"
+    set "META_REG=!META_STATUS!"
+    echo.
+
+    set "INPUTFILE=%TEMP%\spim_input_%RANDOM%.txt"
+
+    REM Input order (Process_SPIM_SinglePlane_v1.0.exe):
+    REM   1) source dir (with trailing backslash)
+    REM   2) target dir (with trailing backslash)
+    REM   3) digits of filenames
+    REM   4) min time point
+    REM   5) max time point
+    REM   6) reference time point
+    REM   7) camera number
+    (
+        echo !SRC_DIR!\
+        echo !TGT_DIR!\
+        echo !NAME_DIGIT!
+        echo !MIN_FRAME!
+        echo !MAX_FRAME!
+        echo !REF_FRAME!
+        echo !CAM_NUM!
+    ) > "!INPUTFILE!"
+
+    echo [Step !STEP_N!/!STEPS!] Running Process_SPIM_SinglePlane_v1.0.exe...
+    "%BIN_DIR%\Process_SPIM_SinglePlane_v1.0.exe" < "!INPUTFILE!"
+
+    del "!INPUTFILE!" 2>nul
+
+    echo   Process_SPIM_SinglePlane_v1.0.exe completed for dataset !SRC_DIR!. 
     echo.
 )
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.0] — 2026-09-11
+
+### Changed
+- **"Both" mode now compresses first, then registers**: in `:process_dataset`,
+  the compression step (`stack2h5_v2.exe` via MPI) runs as Step 1 and the
+  registration step (`Process_SPIM.exe`) as Step 2; `[Step n/m]` labels
+  renumber automatically. Mode prompt option 3 and the `MODE_LABEL` updated
+  to "(compression then registration)". Mirrored in `single_plane_variant.bat`
+  (registration step uses `Process_SPIM_SinglePlane_v1.0.exe` there).
+- **README updated** to the new order (overview, deliverables table, mode
+  prompt, per-dataset workflow steps e/f). The stale "if registration fails,
+  its compression is skipped" claims were also corrected — exit-code handling
+  was removed in 0.1.8, so both steps always run when selected.
+
+---
+
 ## [0.1.9] — 2026-06-30
 
 ### Fixed
